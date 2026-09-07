@@ -6,7 +6,20 @@ Cloud sessions**.
 
 ## Play
 
-Open `index.html` in any modern web browser.
+**Live:** https://ishaan119.github.io/kiro_cloud_session_demo/ (once GitHub Pages is enabled — see below).
+
+Or open `index.html` in any modern web browser locally.
+
+## Live hosting (GitHub Pages)
+
+This repo auto-deploys the game to **GitHub Pages** via GitHub Actions
+(`.github/workflows/deploy-pages.yml`) on every push to `main`.
+
+**One-time setup** (repo admin, in the GitHub UI):
+1. Go to **Settings → Pages**.
+2. Under **Build and deployment → Source**, choose **GitHub Actions**.
+3. Push to `main` (or re-run the workflow from the **Actions** tab). The site
+   goes live at the URL above in ~1–2 minutes.
 
 ## Game features
 
