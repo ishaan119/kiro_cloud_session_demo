@@ -12,6 +12,7 @@
       --x-color: #89b4fa;
       --o-color: #f38ba8;
       --text: #cdd6f4;
+      --muted: #7f849c;
       --accent: #a6e3a1;
     }
 
@@ -24,7 +25,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 1.5rem;
+      gap: 1.25rem;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
@@ -35,6 +36,58 @@
       margin: 0;
       font-weight: 700;
       letter-spacing: 0.05em;
+    }
+
+    .controls {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      align-items: center;
+    }
+
+    .control-group label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .toggle {
+      display: flex;
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 3px;
+    }
+
+    .toggle button {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      padding: 0.4rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .toggle button.active {
+      background: var(--x-color);
+      color: #1e1e2e;
+    }
+
+    .toggle button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
     }
 
     #status {
@@ -76,6 +129,31 @@
     .cell.o { color: var(--o-color); }
     .cell.win { background: var(--accent); color: #1e1e2e; }
 
+    #scoreboard {
+      display: flex;
+      gap: 1rem;
+      font-weight: 600;
+    }
+
+    .score {
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      text-align: center;
+      min-width: 70px;
+    }
+
+    .score .score-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .score .score-value { font-size: 1.4rem; }
+    .score.x .score-value { color: var(--x-color); }
+    .score.o .score-value { color: var(--o-color); }
+
     #reset {
       padding: 0.6rem 1.4rem;
       font-size: 1rem;
@@ -92,9 +170,34 @@
 </head>
 <body>
   <h1>Tic-Tac-Toe</h1>
+
+  <div class="controls">
+    <div class="control-group">
+      <label>Mode</label>
+      <div class="toggle" id="mode-toggle">
+        <button data-mode="2p" class="active">2 Players</button>
+        <button data-mode="ai">vs Computer</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <label>Difficulty</label>
+      <div class="toggle" id="difficulty-toggle">
+        <button data-difficulty="easy">Easy</button>
+        <button data-difficulty="hard" class="active">Hard</button>
+      </div>
+    </div>
+  </div>
+
   <div id="status">Player X's turn</div>
   <div id="board" role="grid" aria-label="Tic-Tac-Toe board"></div>
-  <button id="reset">New Game</button>
+
+  <div id="scoreboard">
+    <div class="score x"><div class="score-label">X</div><div class="score-value" id="score-x">0</div></div>
+    <div class="score"><div class="score-label">Draws</div><div class="score-value" id="score-draw">0</div></div>
+    <div class="score o"><div class="score-label">O</div><div class="score-value" id="score-o">0</div></div>
+  </div>
+
+  <button id="reset">New Round</button>
 
   <script>
     (function () {
@@ -104,26 +207,50 @@
         [0, 4, 8], [2, 4, 6],            // diagonals
       ];
 
+      const HUMAN = "X";
+      const AI = "O";
+
       const boardEl = document.getElementById("board");
       const statusEl = document.getElementById("status");
       const resetBtn = document.getElementById("reset");
+      const modeToggle = document.getElementById("mode-toggle");
+      const difficultyToggle = document.getElementById("difficulty-toggle");
+      const scoreEls = {
+        X: document.getElementById("score-x"),
+        O: document.getElementById("score-o"),
+        draw: document.getElementById("score-draw"),
+      };
 
       let board;          // array of 9: "", "X", or "O"
       let currentPlayer;  // "X" or "O"
       let gameOver;
+      let mode = "2p";        // "2p" | "ai"
+      let difficulty = "hard"; // "easy" | "hard"
+      let locked = false;      // input lock while AI "thinks"
 
+      const scores = { X: 0, O: 0, draw: 0 };
       const cells = [];
 
-      function init() {
+      function newRound() {
         board = Array(9).fill("");
         currentPlayer = "X";
         gameOver = false;
+        locked = false;
         cells.forEach((cell) => {
           cell.textContent = "";
           cell.disabled = false;
           cell.className = "cell";
         });
-        statusEl.textContent = "Player X's turn";
+        updateStatus();
+      }
+
+      function updateStatus() {
+        if (mode === "ai") {
+          statusEl.textContent =
+            currentPlayer === HUMAN ? "Your turn (X)" : "Computer is thinking…";
+        } else {
+          statusEl.textContent = "Player " + currentPlayer + "'s turn";
+        }
       }
 
       function buildBoard() {
@@ -139,48 +266,169 @@
         }
       }
 
-      function checkWinner() {
+      // Returns { winner, line } or null. Works on any board array.
+      function evaluate(b) {
         for (const line of WINNING_LINES) {
-          const [a, b, c] = line;
-          if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-            return { winner: board[a], line };
+          const [a, c, d] = line;
+          if (b[a] && b[a] === b[c] && b[a] === b[d]) {
+            return { winner: b[a], line };
           }
         }
         return null;
       }
 
-      function handleMove(index) {
-        if (gameOver || board[index]) return;
-
-        board[index] = currentPlayer;
-        const cell = cells[index];
-        cell.textContent = currentPlayer;
-        cell.classList.add(currentPlayer.toLowerCase());
-        cell.disabled = true;
-
-        const result = checkWinner();
-        if (result) {
-          gameOver = true;
-          statusEl.textContent = "Player " + result.winner + " wins! 🎉";
-          result.line.forEach((i) => cells[i].classList.add("win"));
-          cells.forEach((c) => (c.disabled = true));
-          return;
-        }
-
-        if (board.every((v) => v !== "")) {
-          gameOver = true;
-          statusEl.textContent = "It's a draw!";
-          return;
-        }
-
-        currentPlayer = currentPlayer === "X" ? "O" : "X";
-        statusEl.textContent = "Player " + currentPlayer + "'s turn";
+      function emptyIndices(b) {
+        const out = [];
+        for (let i = 0; i < 9; i++) if (!b[i]) out.push(i);
+        return out;
       }
 
-      resetBtn.addEventListener("click", init);
+      // Minimax with depth so the AI prefers faster wins / slower losses.
+      function minimax(b, depth, isMaximizing) {
+        const result = evaluate(b);
+        if (result) return result.winner === AI ? 10 - depth : depth - 10;
+        if (emptyIndices(b).length === 0) return 0;
 
+        if (isMaximizing) {
+          let best = -Infinity;
+          for (const i of emptyIndices(b)) {
+            b[i] = AI;
+            best = Math.max(best, minimax(b, depth + 1, false));
+            b[i] = "";
+          }
+          return best;
+        } else {
+          let best = Infinity;
+          for (const i of emptyIndices(b)) {
+            b[i] = HUMAN;
+            best = Math.min(best, minimax(b, depth + 1, true));
+            b[i] = "";
+          }
+          return best;
+        }
+      }
+
+      function bestAiMove(b) {
+        let bestScore = -Infinity;
+        let move = null;
+        for (const i of emptyIndices(b)) {
+          b[i] = AI;
+          const score = minimax(b, 0, false);
+          b[i] = "";
+          if (score > bestScore) {
+            bestScore = score;
+            move = i;
+          }
+        }
+        return move;
+      }
+
+      function chooseAiMove() {
+        const open = emptyIndices(board);
+        // Easy: 55% of the time play a random move, otherwise play optimally.
+        if (difficulty === "easy" && Math.random() < 0.55) {
+          return open[Math.floor(Math.random() * open.length)];
+        }
+        return bestAiMove(board.slice());
+      }
+
+      function placeMark(index, player) {
+        board[index] = player;
+        const cell = cells[index];
+        cell.textContent = player;
+        cell.classList.add(player.toLowerCase());
+        cell.disabled = true;
+      }
+
+      function finishRound(result) {
+        gameOver = true;
+        if (result) {
+          scores[result.winner]++;
+          result.line.forEach((i) => cells[i].classList.add("win"));
+          cells.forEach((c) => (c.disabled = true));
+          if (mode === "ai") {
+            statusEl.textContent =
+              result.winner === HUMAN ? "You win! 🎉" : "Computer wins!";
+          } else {
+            statusEl.textContent = "Player " + result.winner + " wins! 🎉";
+          }
+        } else {
+          scores.draw++;
+          statusEl.textContent = "It's a draw!";
+        }
+        renderScores();
+      }
+
+      function renderScores() {
+        scoreEls.X.textContent = scores.X;
+        scoreEls.O.textContent = scores.O;
+        scoreEls.draw.textContent = scores.draw;
+      }
+
+      function advanceTurn() {
+        currentPlayer = currentPlayer === "X" ? "O" : "X";
+        updateStatus();
+        if (mode === "ai" && currentPlayer === AI && !gameOver) {
+          locked = true;
+          setTimeout(aiTurn, 400);
+        }
+      }
+
+      function aiTurn() {
+        const move = chooseAiMove();
+        if (move === null || move === undefined) { locked = false; return; }
+        placeMark(move, AI);
+        locked = false;
+
+        const result = evaluate(board);
+        if (result) return finishRound(result);
+        if (emptyIndices(board).length === 0) return finishRound(null);
+        advanceTurn();
+      }
+
+      function handleMove(index) {
+        if (gameOver || locked || board[index]) return;
+        if (mode === "ai" && currentPlayer !== HUMAN) return;
+
+        placeMark(index, currentPlayer);
+
+        const result = evaluate(board);
+        if (result) return finishRound(result);
+        if (emptyIndices(board).length === 0) return finishRound(null);
+        advanceTurn();
+      }
+
+      // ---- Control wiring ----
+      modeToggle.addEventListener("click", (e) => {
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        mode = btn.dataset.mode;
+        [...modeToggle.children].forEach((b) =>
+          b.classList.toggle("active", b === btn)
+        );
+        // Difficulty only matters in AI mode.
+        [...difficultyToggle.children].forEach((b) => (b.disabled = mode !== "ai"));
+        newRound();
+      });
+
+      difficultyToggle.addEventListener("click", (e) => {
+        const btn = e.target.closest("button");
+        if (!btn || btn.disabled) return;
+        difficulty = btn.dataset.difficulty;
+        [...difficultyToggle.children].forEach((b) =>
+          b.classList.toggle("active", b === btn)
+        );
+        newRound();
+      });
+
+      resetBtn.addEventListener("click", newRound);
+
+      // ---- Init ----
       buildBoard();
-      init();
+      // Difficulty disabled until AI mode is selected.
+      [...difficultyToggle.children].forEach((b) => (b.disabled = true));
+      renderScores();
+      newRound();
     })();
   </script>
 </body>
