@@ -8,12 +8,27 @@
     :root {
       --bg: #1e1e2e;
       --panel: #2a2a3c;
+      --panel-hover: #33334a;
       --line: #45475a;
       --x-color: #89b4fa;
       --o-color: #f38ba8;
       --text: #cdd6f4;
       --muted: #7f849c;
       --accent: #a6e3a1;
+      --on-accent: #1e1e2e;
+    }
+
+    :root[data-theme="light"] {
+      --bg: #eff1f5;
+      --panel: #ffffff;
+      --panel-hover: #e6e9ef;
+      --line: #ccd0da;
+      --x-color: #1e66f5;
+      --o-color: #d20f39;
+      --text: #4c4f69;
+      --muted: #8c8fa1;
+      --accent: #40a02b;
+      --on-accent: #ffffff;
     }
 
     * { box-sizing: border-box; }
@@ -30,6 +45,7 @@
       background: var(--bg);
       color: var(--text);
       padding: 1.5rem;
+      transition: background 0.2s ease, color 0.2s ease;
     }
 
     h1 {
@@ -82,7 +98,7 @@
 
     .toggle button.active {
       background: var(--x-color);
-      color: #1e1e2e;
+      color: var(--on-accent);
     }
 
     .toggle button:disabled {
@@ -121,13 +137,13 @@
       user-select: none;
     }
 
-    .cell:hover:not(:disabled) { background: #33334a; }
+    .cell:hover:not(:disabled) { background: var(--panel-hover); }
     .cell:active:not(:disabled) { transform: scale(0.96); }
     .cell:disabled { cursor: default; }
 
     .cell.x { color: var(--x-color); }
     .cell.o { color: var(--o-color); }
-    .cell.win { background: var(--accent); color: #1e1e2e; }
+    .cell.win { background: var(--accent); color: var(--on-accent); }
 
     #scoreboard {
       display: flex;
@@ -161,7 +177,7 @@
       border: none;
       border-radius: 8px;
       background: var(--x-color);
-      color: #1e1e2e;
+      color: var(--on-accent);
       cursor: pointer;
       transition: filter 0.15s ease;
     }
@@ -184,6 +200,13 @@
       <div class="toggle" id="difficulty-toggle">
         <button data-difficulty="easy">Easy</button>
         <button data-difficulty="hard" class="active">Hard</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <label>Theme</label>
+      <div class="toggle" id="theme-toggle">
+        <button data-theme="dark">🌙 Dark</button>
+        <button data-theme="light">☀️ Light</button>
       </div>
     </div>
   </div>
@@ -215,6 +238,7 @@
       const resetBtn = document.getElementById("reset");
       const modeToggle = document.getElementById("mode-toggle");
       const difficultyToggle = document.getElementById("difficulty-toggle");
+      const themeToggle = document.getElementById("theme-toggle");
       const scoreEls = {
         X: document.getElementById("score-x"),
         O: document.getElementById("score-o"),
@@ -230,6 +254,36 @@
 
       const scores = { X: 0, O: 0, draw: 0 };
       const cells = [];
+
+      const THEME_KEY = "ttt-theme";
+
+      function applyTheme(theme) {
+        const normalized = theme === "light" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", normalized);
+        [...themeToggle.children].forEach((b) =>
+          b.classList.toggle("active", b.dataset.theme === normalized)
+        );
+        try {
+          localStorage.setItem(THEME_KEY, normalized);
+        } catch (e) {
+          /* localStorage unavailable (e.g. private mode) — ignore */
+        }
+      }
+
+      function initialTheme() {
+        let stored = null;
+        try {
+          stored = localStorage.getItem(THEME_KEY);
+        } catch (e) {
+          /* ignore */
+        }
+        if (stored === "light" || stored === "dark") return stored;
+        // Fall back to the OS preference on first visit.
+        const prefersLight =
+          window.matchMedia &&
+          window.matchMedia("(prefers-color-scheme: light)").matches;
+        return prefersLight ? "light" : "dark";
+      }
 
       function newRound() {
         board = Array(9).fill("");
@@ -421,9 +475,16 @@
         newRound();
       });
 
+      themeToggle.addEventListener("click", (e) => {
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        applyTheme(btn.dataset.theme);
+      });
+
       resetBtn.addEventListener("click", newRound);
 
       // ---- Init ----
+      applyTheme(initialTheme());
       buildBoard();
       // Difficulty disabled until AI mode is selected.
       [...difficultyToggle.children].forEach((b) => (b.disabled = true));
