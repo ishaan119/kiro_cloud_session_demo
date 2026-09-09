@@ -4,7 +4,7 @@ A minute-by-minute script for showcasing Kiro Cloud with this Tic-Tac-Toe repo.
 The goal is to demonstrate **autonomy, real GitHub integration, spec-driven
 structure, and memory** — not just code generation.
 
-**Total runtime:** ~12–15 minutes (trim segments to fit).
+**Total runtime:** ~15–17 minutes (trim segments to fit).
 
 ---
 
@@ -65,10 +65,43 @@ Switch to the seeded bug branch and prompt:
 
 (The `backup/win-detection-bug` branch has a subtle diagonal bug planted for this.)
 
-### 13:00 — Reveal memory & wrap (1 min)
-Recap the arc: cold start → feature → PR → review loop → bug fix, all autonomous
-and in the browser. Emphasize the steering conventions were applied without
-re-explaining them.
+### 13:00 — Web ↔ local handoff (3 min) ⭐
+The showstopper: **the same repo, picked up seamlessly across environments.**
+Kiro Cloud isn't a walled garden — the work lives in git, so any Kiro (web or
+local) can continue where another left off.
+
+**Setup:** have Kiro in the *browser* make a small change and push it, then
+switch to *local* Kiro (in your IDE) on the same repo to continue — or go the
+other direction. The narrative beat is "no export, no copy-paste, no lock-in."
+
+**Web → local:**
+1. In the browser session, prompt Kiro to make a change and push it (see prompt below).
+2. Switch to your local machine. Pull the branch:
+   ```
+   git pull
+   ```
+3. Open local Kiro and prompt it to keep going — it has the full history and
+   context from git.
+
+**Local → web:**
+1. Make/commit a change locally and `git push`.
+2. Back in the browser, start (or refresh) a Kiro Cloud session on the repo — it
+   sees the pushed commits immediately and can continue.
+
+**What to point out:**
+- The handoff is just **git** — branches, commits, push/pull. Nothing proprietary.
+- Steering (`.kiro/steering/`) travels *with the repo*, so conventions apply in
+  both environments automatically.
+- You can start something ambitious in the cloud (no local setup) and finish it
+  locally with your own tools — or vice versa.
+
+> Make a small visible change — bump the page title to "Tic-Tac-Toe (Cloud+Local Demo)" — then commit and push it to the current branch so I can pick it up from another Kiro session.
+
+### 16:00 — Reveal memory & wrap (1 min)
+Recap the arc: cold start → feature → PR → review loop → bug fix → web/local
+handoff, all autonomous and in the browser (and continued locally). Emphasize the
+steering conventions were applied without re-explaining them, in *both*
+environments.
 
 ---
 
@@ -90,6 +123,10 @@ Reviewer feedback: the match-winner banner should be dismissible, and the "New M
 Players report the game sometimes misses a diagonal win. Investigate the win-detection logic, find the bug, fix it, and explain the root cause.
 ```
 
+```
+Make a small visible change — bump the page title to "Tic-Tac-Toe (Cloud+Local Demo)" — then commit and push it to the current branch so I can pick it up from another Kiro session.
+```
+
 ---
 
 ## Talking points to hit
@@ -97,6 +134,9 @@ Players report the game sometimes misses a diagonal win. Investigate the win-det
 - **No local setup** — everything runs in the cloud sandbox from a browser.
 - **Autonomous multi-step execution** — plans, edits multiple files, self-verifies.
 - **Real git & GitHub** — branches, commits, and PRs against the actual repo.
+- **Web ↔ local, no lock-in** — start in the cloud with zero setup, continue
+  locally in your IDE (or vice versa). The handoff is just git; steering and
+  context travel with the repo.
 - **Spec-driven option** — mention specs (requirements → design → tasks) for
   audiences who want rigor, not just "vibes."
 - **Memory** — steering files and learnings apply team conventions automatically.
