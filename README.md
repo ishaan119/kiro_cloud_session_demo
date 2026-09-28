@@ -34,6 +34,45 @@ This repo auto-deploys the game to **GitHub Pages** via GitHub Actions
 
 `index.html` is fully self-contained (HTML + CSS + JavaScript in one file).
 
+## Winning & draws
+
+Game results are reported by a pure `checkWinner(board)` function — it takes a
+board and returns a result with no DOM access, consistent with the existing
+`evaluate(board)` helper.
+
+`board` is a 9-element array of `"X"`, `"O"`, or `""` (empty string for an empty
+cell), laid out row-major:
+
+```
+0 1 2
+3 4 5
+6 7 8
+```
+
+It returns exactly one of:
+
+- `"X"` or `"O"` — the mark that has completed a winning line (any row, column,
+  or diagonal).
+- `"draw"` — the board is full and no one has won.
+- `null` — the game is still in progress (no winner and at least one empty cell).
+
+```js
+// Top row of X → "X"
+checkWinner(["X", "X", "X",
+             "O", "O", "",
+             "",  "",  ""]);   // "X"
+
+// Full board, no winning line → "draw"
+checkWinner(["X", "O", "X",
+             "X", "O", "O",
+             "O", "X", "X"]);  // "draw"
+
+// Still in progress → null
+checkWinner(["X", "O", "",
+             "",  "X", "",
+             "",  "",  "O"]);  // null
+```
+
 ## Using this as a Kiro Cloud demo
 
 This repo is set up to showcase Kiro Cloud's strengths: **autonomy, real GitHub
