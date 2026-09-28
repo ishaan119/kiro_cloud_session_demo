@@ -463,6 +463,15 @@
         return out;
       }
 
+      // Pure terminal-state check. Returns "X"/"O" for a completed line,
+      // "draw" for a full board with no winner, or null while in progress.
+      function checkWinner(b) {
+        const result = evaluate(b);
+        if (result) return result.winner;
+        if (emptyIndices(b).length === 0) return "draw";
+        return null;
+      }
+
       // Minimax with depth so the AI prefers faster wins / slower losses.
       function minimax(b, depth, isMaximizing) {
         const result = evaluate(b);
@@ -601,9 +610,11 @@
         placeMark(move, AI);
         locked = false;
 
-        const result = evaluate(board);
-        if (result) return finishRound(result);
-        if (emptyIndices(board).length === 0) return finishRound(null);
+        // checkWinner drives the terminal decision; evaluate supplies the
+        // winning line for the highlight when someone has won.
+        const outcome = checkWinner(board);
+        if (outcome === "X" || outcome === "O") return finishRound(evaluate(board));
+        if (outcome === "draw") return finishRound(null);
         advanceTurn();
       }
 
@@ -613,9 +624,11 @@
 
         placeMark(index, currentPlayer);
 
-        const result = evaluate(board);
-        if (result) return finishRound(result);
-        if (emptyIndices(board).length === 0) return finishRound(null);
+        // checkWinner drives the terminal decision; evaluate supplies the
+        // winning line for the highlight when someone has won.
+        const outcome = checkWinner(board);
+        if (outcome === "X" || outcome === "O") return finishRound(evaluate(board));
+        if (outcome === "draw") return finishRound(null);
         advanceTurn();
       }
 
@@ -660,6 +673,12 @@
       resetModal.addEventListener("click", (e) => {
         if (e.target === resetModal) closeModal();
       });
+
+      // Expose pure helpers for testing without a build step; everything else
+      // stays encapsulated inside the IIFE.
+      window.ticTacToe = window.ticTacToe || {};
+      window.ticTacToe.checkWinner = checkWinner;
+      window.ticTacToe.evaluate = evaluate;
 
       // ---- Init ----
       applyTheme(initialTheme());
