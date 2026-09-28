@@ -3,17 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tic-Tac-Toe</title>
+  <title>Tic-Tac-Toe (Cloud+Local Demo)</title>
   <style>
     :root {
       --bg: #1e1e2e;
       --panel: #2a2a3c;
+      --panel-hover: #33334a;
       --line: #45475a;
       --x-color: #89b4fa;
       --o-color: #f38ba8;
       --text: #cdd6f4;
       --muted: #7f849c;
       --accent: #a6e3a1;
+      --on-accent: #1e1e2e;
+    }
+
+    :root[data-theme="light"] {
+      --bg: #eff1f5;
+      --panel: #ffffff;
+      --panel-hover: #e6e9ef;
+      --line: #ccd0da;
+      --x-color: #1e66f5;
+      --o-color: #d20f39;
+      --text: #4c4f69;
+      --muted: #8c8fa1;
+      --accent: #40a02b;
+      --on-accent: #ffffff;
     }
 
     * { box-sizing: border-box; }
@@ -30,6 +45,7 @@
       background: var(--bg);
       color: var(--text);
       padding: 1.5rem;
+      transition: background 0.2s ease, color 0.2s ease;
     }
 
     h1 {
@@ -82,7 +98,7 @@
 
     .toggle button.active {
       background: var(--x-color);
-      color: #1e1e2e;
+      color: var(--on-accent);
     }
 
     .toggle button:disabled {
@@ -121,13 +137,32 @@
       user-select: none;
     }
 
-    .cell:hover:not(:disabled) { background: #33334a; }
+    .cell:hover:not(:disabled) { background: var(--panel-hover); }
     .cell:active:not(:disabled) { transform: scale(0.96); }
     .cell:disabled { cursor: default; }
 
     .cell.x { color: var(--x-color); }
     .cell.o { color: var(--o-color); }
-    .cell.win { background: var(--accent); color: #1e1e2e; }
+    .cell.win {
+      background: var(--accent);
+      color: var(--on-accent);
+      animation: win-pulse 1.1s ease-in-out infinite;
+    }
+
+    @keyframes win-pulse {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent);
+      }
+      50% {
+        transform: scale(1.06);
+        box-shadow: 0 0 14px 2px color-mix(in srgb, var(--accent) 55%, transparent);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .cell.win { animation: none; }
+    }
 
     #scoreboard {
       display: flex;
@@ -161,11 +196,99 @@
       border: none;
       border-radius: 8px;
       background: var(--x-color);
-      color: #1e1e2e;
+      color: var(--on-accent);
       cursor: pointer;
       transition: filter 0.15s ease;
     }
     #reset:hover { filter: brightness(1.1); }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    #reset-scores {
+      padding: 0.6rem 1.4rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+      transition: filter 0.15s ease, border-color 0.15s ease;
+    }
+    #reset-scores:hover { filter: brightness(1.15); border-color: var(--o-color); }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 1.5rem;
+      z-index: 10;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1.5rem;
+      max-width: 340px;
+      width: 100%;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+
+    .modal h2 {
+      margin: 0 0 0.5rem;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .modal p {
+      margin: 0 0 1.25rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+
+    .modal-actions button {
+      padding: 0.55rem 1.2rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: filter 0.15s ease;
+    }
+    .modal-actions button:focus-visible {
+      outline: 2px solid var(--x-color);
+      outline-offset: 2px;
+    }
+
+    #modal-cancel {
+      background: var(--line);
+      color: var(--text);
+    }
+    #modal-cancel:hover { filter: brightness(1.2); }
+
+    #modal-confirm {
+      background: var(--o-color);
+      color: #1e1e2e;
+    }
+    #modal-confirm:hover { filter: brightness(1.1); }
   </style>
 </head>
 <body>
@@ -186,6 +309,13 @@
         <button data-difficulty="hard" class="active">Hard</button>
       </div>
     </div>
+    <div class="control-group">
+      <label>Theme</label>
+      <div class="toggle" id="theme-toggle">
+        <button data-theme="dark">🌙 Dark</button>
+        <button data-theme="light">☀️ Light</button>
+      </div>
+    </div>
   </div>
 
   <div id="status">Player X's turn</div>
@@ -197,7 +327,22 @@
     <div class="score o"><div class="score-label">O</div><div class="score-value" id="score-o">0</div></div>
   </div>
 
-  <button id="reset">New Round</button>
+  <div class="actions">
+    <button id="reset">New Round</button>
+    <button id="reset-scores">Reset Scores</button>
+  </div>
+
+  <div class="modal-overlay" id="reset-modal" role="dialog" aria-modal="true"
+       aria-labelledby="reset-modal-title" aria-describedby="reset-modal-desc">
+    <div class="modal">
+      <h2 id="reset-modal-title">Reset scoreboard?</h2>
+      <p id="reset-modal-desc">This clears the X, O, and Draw scores back to zero. This can't be undone.</p>
+      <div class="modal-actions">
+        <button id="modal-cancel" type="button">Cancel</button>
+        <button id="modal-confirm" type="button">Reset Scores</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     (function () {
@@ -213,8 +358,13 @@
       const boardEl = document.getElementById("board");
       const statusEl = document.getElementById("status");
       const resetBtn = document.getElementById("reset");
+      const resetScoresBtn = document.getElementById("reset-scores");
+      const resetModal = document.getElementById("reset-modal");
+      const modalCancelBtn = document.getElementById("modal-cancel");
+      const modalConfirmBtn = document.getElementById("modal-confirm");
       const modeToggle = document.getElementById("mode-toggle");
       const difficultyToggle = document.getElementById("difficulty-toggle");
+      const themeToggle = document.getElementById("theme-toggle");
       const scoreEls = {
         X: document.getElementById("score-x"),
         O: document.getElementById("score-o"),
@@ -230,6 +380,36 @@
 
       const scores = { X: 0, O: 0, draw: 0 };
       const cells = [];
+
+      const THEME_KEY = "ttt-theme";
+
+      function applyTheme(theme) {
+        const normalized = theme === "light" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", normalized);
+        [...themeToggle.children].forEach((b) =>
+          b.classList.toggle("active", b.dataset.theme === normalized)
+        );
+        try {
+          localStorage.setItem(THEME_KEY, normalized);
+        } catch (e) {
+          /* localStorage unavailable (e.g. private mode) — ignore */
+        }
+      }
+
+      function initialTheme() {
+        let stored = null;
+        try {
+          stored = localStorage.getItem(THEME_KEY);
+        } catch (e) {
+          /* ignore */
+        }
+        if (stored === "light" || stored === "dark") return stored;
+        // Fall back to the OS preference on first visit.
+        const prefersLight =
+          window.matchMedia &&
+          window.matchMedia("(prefers-color-scheme: light)").matches;
+        return prefersLight ? "light" : "dark";
+      }
 
       function newRound() {
         board = Array(9).fill("");
@@ -281,6 +461,15 @@
         const out = [];
         for (let i = 0; i < 9; i++) if (!b[i]) out.push(i);
         return out;
+      }
+
+      // Pure terminal-state check. Returns "X"/"O" for a completed line,
+      // "draw" for a full board with no winner, or null while in progress.
+      function checkWinner(b) {
+        const result = evaluate(b);
+        if (result) return result.winner;
+        if (emptyIndices(b).length === 0) return "draw";
+        return null;
       }
 
       // Minimax with depth so the AI prefers faster wins / slower losses.
@@ -365,6 +554,47 @@
         scoreEls.draw.textContent = scores.draw;
       }
 
+      function resetScores() {
+        scores.X = 0;
+        scores.O = 0;
+        scores.draw = 0;
+        renderScores();
+      }
+
+      // ---- Reset-scores confirmation modal ----
+      let lastFocused = null;
+
+      function openModal() {
+        lastFocused = document.activeElement;
+        resetModal.classList.add("open");
+        modalConfirmBtn.focus();
+        document.addEventListener("keydown", handleModalKeydown);
+      }
+
+      function closeModal() {
+        resetModal.classList.remove("open");
+        document.removeEventListener("keydown", handleModalKeydown);
+        if (lastFocused && typeof lastFocused.focus === "function") {
+          lastFocused.focus();
+        }
+      }
+
+      function handleModalKeydown(e) {
+        if (e.key === "Escape") {
+          closeModal();
+          return;
+        }
+        // Simple focus trap between the two modal buttons.
+        if (e.key === "Tab") {
+          e.preventDefault();
+          const target =
+            document.activeElement === modalConfirmBtn
+              ? modalCancelBtn
+              : modalConfirmBtn;
+          target.focus();
+        }
+      }
+
       function advanceTurn() {
         currentPlayer = currentPlayer === "X" ? "O" : "X";
         updateStatus();
@@ -380,9 +610,11 @@
         placeMark(move, AI);
         locked = false;
 
-        const result = evaluate(board);
-        if (result) return finishRound(result);
-        if (emptyIndices(board).length === 0) return finishRound(null);
+        // checkWinner drives the terminal decision; evaluate supplies the
+        // winning line for the highlight when someone has won.
+        const outcome = checkWinner(board);
+        if (outcome === "X" || outcome === "O") return finishRound(evaluate(board));
+        if (outcome === "draw") return finishRound(null);
         advanceTurn();
       }
 
@@ -392,9 +624,11 @@
 
         placeMark(index, currentPlayer);
 
-        const result = evaluate(board);
-        if (result) return finishRound(result);
-        if (emptyIndices(board).length === 0) return finishRound(null);
+        // checkWinner drives the terminal decision; evaluate supplies the
+        // winning line for the highlight when someone has won.
+        const outcome = checkWinner(board);
+        if (outcome === "X" || outcome === "O") return finishRound(evaluate(board));
+        if (outcome === "draw") return finishRound(null);
         advanceTurn();
       }
 
@@ -421,9 +655,33 @@
         newRound();
       });
 
+      themeToggle.addEventListener("click", (e) => {
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        applyTheme(btn.dataset.theme);
+      });
+
       resetBtn.addEventListener("click", newRound);
 
+      resetScoresBtn.addEventListener("click", openModal);
+      modalCancelBtn.addEventListener("click", closeModal);
+      modalConfirmBtn.addEventListener("click", () => {
+        resetScores();
+        closeModal();
+      });
+      // Clicking the dimmed backdrop cancels (leaves scores untouched).
+      resetModal.addEventListener("click", (e) => {
+        if (e.target === resetModal) closeModal();
+      });
+
+      // Expose pure helpers for testing without a build step; everything else
+      // stays encapsulated inside the IIFE.
+      window.ticTacToe = window.ticTacToe || {};
+      window.ticTacToe.checkWinner = checkWinner;
+      window.ticTacToe.evaluate = evaluate;
+
       // ---- Init ----
+      applyTheme(initialTheme());
       buildBoard();
       // Difficulty disabled until AI mode is selected.
       [...difficultyToggle.children].forEach((b) => (b.disabled = true));
