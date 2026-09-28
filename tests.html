@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>checkWinner tests</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      line-height: 1.5;
+    }
+
+    h1 {
+      margin: 0 0 0.25rem;
+      font-size: 1.4rem;
+    }
+
+    #summary {
+      margin: 0 0 1rem;
+      font-weight: 700;
+    }
+
+    #summary.pass { color: #a6e3a1; }
+    #summary.fail { color: #f38ba8; }
+
+    ul#results {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-width: 640px;
+    }
+
+    ul#results li {
+      padding: 0.55rem 0.8rem;
+      border-radius: 8px;
+      margin-bottom: 0.4rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9rem;
+      background: #2a2a3c;
+    }
+
+    li.pass { border-left: 4px solid #a6e3a1; }
+    li.fail { border-left: 4px solid #f38ba8; color: #f38ba8; }
+
+    .badge {
+      display: inline-block;
+      min-width: 3.2em;
+      font-weight: 700;
+      margin-right: 0.5rem;
+    }
+
+    .detail {
+      display: block;
+      color: #7f849c;
+      font-size: 0.8rem;
+      margin-top: 0.2rem;
+    }
+
+    /* The iframe loads the real game (index.html) so tests run against the
+       actual checkWinner implementation, never a local copy. Hidden from view. */
+    iframe#game {
+      position: absolute;
+      width: 0;
+      height: 0;
+      border: 0;
+      visibility: hidden;
+    }
+  </style>
+</head>
+<body>
+  <h1>checkWinner unit tests</h1>
+  <p id="summary">Loading real game code from index.html…</p>
+  <ul id="results"></ul>
+
+  <!--
+    Load the REAL game. The game logic lives inline inside an IIFE in
+    index.html, so a <script src="index.html"> cannot pull it in. Instead we
+    load index.html in an iframe and, on its `load` event, reach into
+    iframe.contentWindow.ticTacToe.checkWinner. This reuses the exact function
+    shipped in index.html rather than redefining our own copy.
+  -->
+  <iframe id="game" src="index.html" title="game under test"></iframe>
+
+  <script>
+    (function () {
+      "use strict";
+
+      // ---- Tiny assert harness (no libraries) ----
+      var results = [];
+
+      function record(name, passed, detail) {
+        results.push({ name: name, passed: passed, detail: detail });
+      }
+
+      function assertEqual(actual, expected, name) {
+        var passed = actual === expected;
+        var detail =
+          "expected " + JSON.stringify(expected) +
+          ", got " + JSON.stringify(actual);
+        record(name, passed, detail);
+      }
+
+      function render() {
+        var listEl = document.getElementById("results");
+        var summaryEl = document.getElementById("summary");
+        listEl.innerHTML = "";
+
+        var passCount = 0;
+        results.forEach(function (r) {
+          if (r.passed) passCount++;
+          var li = document.createElement("li");
+          li.className = r.passed ? "pass" : "fail";
+
+          var badge = document.createElement("span");
+          badge.className = "badge";
+          badge.textContent = r.passed ? "PASS" : "FAIL";
+          li.appendChild(badge);
+          li.appendChild(document.createTextNode(r.name));
+
+          if (!r.passed && r.detail) {
+            var d = document.createElement("span");
+            d.className = "detail";
+            d.textContent = r.detail;
+            li.appendChild(d);
+          }
+          listEl.appendChild(li);
+        });
+
+        var total = results.length;
+        var allPassed = passCount === total && total > 0;
+        var summary = passCount + "/" + total + " tests passed";
+        summaryEl.textContent = summary;
+        summaryEl.className = allPassed ? "pass" : "fail";
+
+        // Console summary + document.title so headless / at-a-glance checks work.
+        console.log("[checkWinner tests] " + summary);
+        results.forEach(function (r) {
+          console.log(
+            (r.passed ? "  PASS " : "  FAIL ") + r.name +
+            (r.passed ? "" : "  (" + r.detail + ")")
+          );
+        });
+        document.title =
+          (allPassed ? "PASS" : "FAIL") + " " + summary + " — checkWinner tests";
+      }
+
+      function fail(message) {
+        record(message, false, "");
+        render();
+      }
+
+      // ---- Test cases (each builds a row-major 9-cell board) ----
+      // Layout:  0 1 2
+      //          3 4 5
+      //          6 7 8
+      function runTests(checkWinner) {
+        // 1. Row win — top row all X.
+        assertEqual(
+          checkWinner(["X", "X", "X", "", "", "", "", "", ""]),
+          "X",
+          "row win: top row X,X,X -> X"
+        );
+
+        // 2. Column win — left column (0,3,6) all O.
+        assertEqual(
+          checkWinner(["O", "", "", "O", "", "", "O", "", ""]),
+          "O",
+          "column win: left column O -> O"
+        );
+
+        // 3. Diagonal win — main diagonal (0,4,8) all X.
+        assertEqual(
+          checkWinner(["X", "", "", "", "X", "", "", "", "X"]),
+          "X",
+          "diagonal win: main diagonal X -> X"
+        );
+
+        // 4. Full-board draw — X O X / X O O / O X X (verified: no winning line).
+        assertEqual(
+          checkWinner(["X", "O", "X", "X", "O", "O", "O", "X", "X"]),
+          "draw",
+          "full board, no winner -> draw"
+        );
+
+        // 5. In-progress — partially filled, no winner, empty cells remain.
+        assertEqual(
+          checkWinner(["X", "O", "", "", "X", "", "", "", "O"]),
+          null,
+          "in progress: no winner, empty cells -> null"
+        );
+
+        render();
+      }
+
+      // ---- Load the real checkWinner from index.html via the iframe ----
+      var iframe = document.getElementById("game");
+
+      function start() {
+        var api;
+        try {
+          api = iframe.contentWindow && iframe.contentWindow.ticTacToe;
+        } catch (e) {
+          fail(
+            "Could not access iframe contentWindow (" + e.message + "). " +
+            "Serve tests.html over http:// so same-origin access works."
+          );
+          return;
+        }
+
+        if (!api || typeof api.checkWinner !== "function") {
+          fail(
+            "window.ticTacToe.checkWinner is not available on the loaded " +
+            "index.html. The real game must expose it (e.g. " +
+            "window.ticTacToe = { checkWinner }) for these tests to run."
+          );
+          return;
+        }
+
+        runTests(api.checkWinner);
+      }
+
+      iframe.addEventListener("load", start);
+    })();
+  </script>
+</body>
+</html>
